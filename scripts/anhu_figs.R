@@ -17,7 +17,7 @@ p <- ggplot()+coord_map()+
   scale_fill_viridis(name="First\nOccurrence\nRecord")+
   geom_path(data=state,aes(x=long,y=lat,group=group),lwd=0.1,col="grey")+
   geom_path(data=map,aes(x=long,y=lat,group=group),lwd=0.2)+
-  stat_summary_2d(data=combo,aes(x=long,y=lat,z=year),fun="min",bins=100,alpha=0.9)
+  stat_summary_2d(data=combo,aes(x=long,y=lat,z=year),fun="min",bins=50,alpha=0.9)
 p <- p+guides(fill=guide_colourbar(barwidth = unit(4,"mm"),barheight = unit(20,"mm")))
 ggdraw()+
   draw_plot(p,0,0,1,1)+
@@ -82,7 +82,7 @@ plot1 <- ggplot()+theme_bw()+theme(panel.grid=element_blank())+coord_map()+
   scale_color_viridis(name="Population\nGrowth\nRate",direction = -1,option = "inferno")+
   geom_path(data=state,aes(x=long,y=lat,group=group),lwd=0.2,col="grey")+
   geom_path(data=map,aes(x=long,y=lat,group=group),lwd=0.3)+
-  geom_point(data=plotdata,aes(x=long,y=lat,col=exp_growth_rate),size=1.1,alpha=0.8)
+  geom_point(data=plotdata,aes(x=long,y=lat,col=exp_growth_rate),size=1)
 #stat_summary_2d(data=plotdata,aes(x=long,y=lat,z=exp_growth_rate),fun="mean",bins=60)
 plot1 <- plot1+guides(fill=guide_colourbar(barwidth = unit(4,"mm"),barheight = unit(20,"mm")))
 
@@ -100,7 +100,7 @@ plot2 <- ggplot()+theme_bw()+theme(panel.grid=element_blank())+coord_map()+
   geom_path(data=state,aes(x=long,y=lat,group=group),lwd=0.2,col="grey")+
   geom_path(data=map,aes(x=long,y=lat,group=group),lwd=0.3)+
   geom_point(data=plotdata[plotdata$delta_aic<2,],aes(x=long,y=lat,col=best_model),shape=21,size=1.1,stroke=0.5,alpha=0.8)+
-  geom_point(data=plotdata[plotdata$delta_aic>2,],aes(x=long,y=lat,col=best_model),size=1.1)
+  geom_point(data=plotdata[plotdata$delta_aic>2,],aes(x=long,y=lat,col=best_model),size=1.3)
 
 plot2 <- plot2+guides(color=guide_legend(override.aes=list(size=4)))
 
@@ -155,7 +155,7 @@ time_plots <- ggplot()+
 ggdraw()+
   draw_plot(plot1,0,.55,.5,.45)+
   draw_plot(plot2,.5,.55,.5,.45)+
-  draw_plot(model_bar_plot,.722,.79,.26,.18)+
+  draw_plot(model_bar_plot,.722,.79,.26,.16)+
   draw_plot(time_plots,0,0,1,.6)+
   draw_plot_label(c("A","B","C"),x=c(0,.5,0),y=c(.98,.98,.6))
 dev.off()
@@ -200,6 +200,7 @@ for(i in unique(anhu2$state)){
                                   strip.text = element_text(size=8),
                                   axis.text.x=element_text(angle=45,hjust=1,vjust=1))+
             facet_wrap(~Name,scales="free_y",ncol=4)+xlab("Year")+
+            xlim(1950,2017)+
             geom_point(data=zeros,aes(x=year,y=abundance_index),col="grey",shape=1)+
             geom_point(data=dat2,aes(x=Count_yr+1900,y=abundance_index),col="black",shape=1)+
             geom_line(data=dat2[dat2$best_model=="Exponential",],aes(x=Count_yr+1900,y=exp_model),col="red")+

@@ -126,7 +126,7 @@ nest_points <- ggplot(data=nest,aes(x=range,y=breeding_day))+
   theme(text=element_text(size=8),axis.text = element_text(size=8))+
   scale_color_manual(values=brewer.pal(3,"Dark2")[c(1,3,2)])+
   ylab("Days from Nov 1")+xlab("Range")+
-  geom_sina(scale=F,maxwidth=.8,method="count",shape=21,stroke=0.25,size=0.6,alpha=0.7,aes(col=range))+
+  geom_sina(scale=F,maxwidth=.8,method="count",shape=21,stroke=0.25,size=0.8,aes(col=range))+
   geom_boxplot(fill=NA,outlier.colour = NA,notch = T)+
   #geom_violin(fill=NA,outlier.shape = NA,draw_quantiles = 0.5,scale = "count")+
   geom_signif(comparisons=list(c("Native","PNW")),

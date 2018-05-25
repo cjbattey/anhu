@@ -93,6 +93,8 @@ logistic_models <- dlply(anhu,.(Name),
                            model <- try(nlsLM(formula=abundance_index~(K*N0)/((K-N0)*exp(-r*site_yr)+N0), 
                                               data=e,
                                               start=list(K=2,r=0.01,N0=.01),
+                                              lower=c(0,-1,min(anhu$abundance_index)),
+                                              upper=c(10,r=1,N0=max(anhu$abundance_index)),
                                               control=nls.control(maxiter=1000)))})
 # logistic_models <- logistic_models[summary(logistic_models)[,2]=="nls"] #drop models that failed to optimize 
 # anhu <- subset(anhu,Name %in% names(logistic_models)) #subset original data to preserve row order for easy merging
@@ -102,6 +104,8 @@ exponential_models <- dlply(anhu,.(Name),
                               model <- try(nlsLM(formula=abundance_index~N0*exp(rate*site_yr), 
                                                  data=e,
                                                  start=list(rate=0.01,N0=.01),
+                                                 lower=c(-1,min(anhu$abundance_index)),
+                                                 upper=c(1,10),
                                                  control=nls.control(maxiter=1000)))})
 # exponential_models <- exponential_models[summary(exponential_models)[,2]=="nls"] #drop models that failed to optimize
 # anhu <- subset(anhu,Name %in% names(exponential_models)) #subset original data to preserve row order for easy merging
@@ -112,6 +116,8 @@ linear_models <- dlply(anhu,.(Name),
                          model <- try(nlsLM(formula=abundance_index~rate*site_yr+N0, 
                                             data=e,
                                             start=list(rate=0.01,N0=0.01),
+                                            lower=c(-1,min(anhu$abundance_index)),
+                                            upper=c(1,10),
                                             control=nls.control(maxiter=1000)))})
 
 #get confidence intervals for all models (takes ~2 minutes on 8 cores)
@@ -213,8 +219,8 @@ model_coeffs <- data.frame(Name=names(exponential_models),
 anhu <- merge(anhu,model_coeffs,by="Name")
 
 #are nw growth rates related to the date of colonization?
-nw <- subset(anhu,state %in% c("OR","WA","BC"))
-nw <- ddply(nw,.(Name),summarize,first_report=min(year),rate=exp_growth_rate[1])
+nw <- subset(anhu,abundance_index>0 & !is.na(abundance_index))
+nw <- ddply(anhu,.(Name),summarize,first_report=min(year),rate=exp_growth_rate[1])
 lm(rate~first_report,nw) %>% summary() #nope!
 ggplot(data=nw,aes(x=first_report,y=rate))+geom_point()+geom_smooth(method="lm")
 
@@ -225,13 +231,17 @@ nw$range <- "PNW"
 ca <- subset(anhu,state=="CA")
 ca <- ddply(ca,.(Name),summarize,rate=exp_growth_rate[1])
 ca$range <- "Native"
-nwc <- rbind(nw,ca)
-wilcox.test(rate~range,nwc,conf.int=T) #yep!
-ggplot(data=nwc,aes(x=range,y=rate,fill=range))+geom_sina()+geom_boxplot(notch=T,fill=NA)
+sw <- subset(anhu,state %in% c("AZ","NV","NM","TX"))
+sw <- ddply(sw,.(Name),summarize,rate=exp_growth_rate[1])
+sw$range <- "SW"
+nwc <- rbind(nw,ca,sw)
+wilcox.test(sw$rate,ca$rate,conf.int=T) #nope for the SW
+wilcox.test(nw$rate,ca$rate,conf.int=T) #yep for the PNW
+ggplot(data=nwc,aes(x=range,y=rate,fill=range))+
+  ylab("Population Growth Rate")+geom_sina()+geom_boxplot(notch=T,fill=NA)
 
 #add zero-report years
 anhu <- join(anhu,eff,type="full",by=c("Name","year","Count_yr"))
-
 
 
 
