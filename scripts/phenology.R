@@ -78,7 +78,7 @@ ggplot(data=data.frame(diffs),aes(x=diffs))+theme_minimal()+
 
 wilcox.test(formula=breeding_day~range,data=subset(tmp,range %in% c("Native","PNW")),conf.int=T)
 wilcox.test(formula=breeding_day~range,data=subset(nest,range %in% c("Native","SW")),conf.int=T)
-
+nest$total <- apply(nest,1,function(e){if(e[5]=="Native"){882}else if(e[5]=="PNW"){124}else if(e[5]=="SW"){181}})
 #figure 3 - nest map 
 nest$range <- factor(nest$range,levels=c("SW","Native","PNW"))
 nest_map <- ggplot()+coord_map()+
@@ -110,16 +110,16 @@ nest_histograms <- ggplot(data=nest,aes(x=breeding_day,fill=range))+
   geom_histogram(data=nest[nest$range=="PNW",],bins=50,alpha=0.7)+
   geom_segment(data=medians,aes(x=median,xend=median,y=0,yend=-3,col=range),lwd=0.35)
 
-# nest_ridges <- ggplot(data=nest,aes(x=breeding_day,y=range,fill=range))+
-#   theme_minimal()+theme(text=element_text(size=8),
-#                         legend.position = "none",
-#                         axis.title.y=element_blank())+
-#   scale_fill_brewer(palette = "Dark2")+
-#   scale_color_brewer(palette = "Dark2")+
-#   scale_y_discrete(expand=c(0.01,0))+
-#   xlab("Days from Nov 1")+
-#   geom_density_ridges(stat = "binline", bins = 50, scale = 0.99, draw_baseline = T)+
-#   geom_segment(data=medians,aes(x=median,xend=median,y=range,yend=as.numeric(range)-.05))
+nest_ridges <- ggplot(data=nest,aes(x=breeding_day,y=range,fill=range))+
+  theme_minimal()+theme(text=element_text(size=8),
+                        legend.position = "none",
+                        axis.title.y=element_blank())+
+  scale_fill_brewer(palette = "Dark2")+
+  scale_color_brewer(palette = "Dark2")+
+  scale_y_discrete(expand=c(0.01,0))+
+  xlab("Days from Nov 1")+
+  geom_density_ridges(stat = "binline", bins = 75, scale = 0.99, draw_baseline = T)+
+  geom_segment(data=medians,aes(x=median,xend=median,y=range,yend=as.numeric(as.character(range))-.05))
 
 nest_points <- ggplot(data=nest,aes(x=range,y=breeding_day))+
   theme_minimal()+

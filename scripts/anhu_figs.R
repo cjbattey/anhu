@@ -122,13 +122,21 @@ model_bar_plot <- ggplot(data=best_model_summary,aes(x=state,y=value,fill=variab
   geom_bar(stat="identity")+
   scale_fill_brewer(palette = "Dark2",name="Best Model (AIC)")
 
+mean(subset(best_model_summary,state %in% c("CA") & variable=="Exponential")$value)
+mean(subset(best_model_summary,state %in% c("CA") & variable=="Linear")$value)
+mean(subset(best_model_summary,state %in% c("OR","WA","BC") & variable=="Exponential")$value)
+mean(subset(best_model_summary,state %in% c("TX","AZ") & variable=="Exponential")$value)
+
 # dat <- subset(anhu,Name %in% c("Oceanside-Vista-Carlsbad","Los Angeles","San Jose","Centerville Beach to King Salmon","Medford","Portland","Seattle","Vancouver"))
 # dat$Name <- factor(dat$Name,levels=c("Oceanside-Vista-Carlsbad","Los Angeles","San Jose","Centerville Beach to King Salmon","Medford","Portland","Seattle","Vancouver"))
-dat <- subset(anhu,Name %in% c("San Diego","Santa Barbara","Santa Cruz County","Oakland","Redding",
-                              "Medford","Eugene","Portland","Tacoma","Seattle","Nanaimo","Vancouver"))
-dat$Name <- sapply(dat$Name,function(e){str_wrap(e,width=13)})
-dat$Name <- factor(dat$Name,levels=c("San Diego","Santa Barbara","Santa Cruz\nCounty","Oakland","Redding",
-                                     "Medford","Eugene","Portland","Tacoma","Seattle","Nanaimo","Vancouver"))
+dat <- subset(anhu,Name %in% c("El Paso","Santa Catalina Mountains","Tucson Valley",
+                               "Santa Barbara","Santa Cruz County","Oakland","Redding",
+                              "Eugene","Portland","Seattle","Nanaimo","Vancouver"))
+dat$Name <- sapply(dat$Name,function(e){str_wrap(e,width=14)})
+dat$Name <- apply(dat,1,function(e){if(e[16]=="CA"){paste0(e[1],"*")}else{e[1]}})
+dat$Name <- factor(dat$Name,levels=rev(c("El Paso","Santa Catalina\nMountains","Tucson Valley",
+                                     "Santa Barbara*","Santa Cruz\nCounty*","Oakland*","Redding*",
+                                     "Eugene","Portland","Seattle","Nanaimo","Vancouver")))
 zeros <- subset(dat,abundance_index==0)
 dat <- subset(dat,abundance_index>0)
 time_plots <- ggplot()+

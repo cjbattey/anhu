@@ -96,8 +96,8 @@ logistic_models <- dlply(anhu,.(Name),
                                               lower=c(0,-1,min(anhu$abundance_index)),
                                               upper=c(10,r=1,N0=max(anhu$abundance_index)),
                                               control=nls.control(maxiter=1000)))})
-# logistic_models <- logistic_models[summary(logistic_models)[,2]=="nls"] #drop models that failed to optimize 
-# anhu <- subset(anhu,Name %in% names(logistic_models)) #subset original data to preserve row order for easy merging
+logistic_models <- logistic_models[summary(logistic_models)[,2]=="nls"] #drop models that failed to optimize
+anhu <- subset(anhu,Name %in% names(logistic_models)) #subset original data to preserve row order for easy merging
 
 exponential_models <- dlply(anhu,.(Name),
                             function(e) {
@@ -237,9 +237,12 @@ sw$range <- "SW"
 nwc <- rbind(nw,ca,sw)
 wilcox.test(sw$rate,ca$rate,conf.int=T) #nope for the SW
 wilcox.test(nw$rate,ca$rate,conf.int=T) #yep for the PNW
-ggplot(data=nwc,aes(x=range,y=rate,fill=range))+
-  ylab("Population Growth Rate")+geom_sina()+geom_boxplot(notch=T,fill=NA)
-
+pdf("figures/growth_rate_boxplots.pdf",width=3.5,height=3,useDingbats = F)
+p <- ggplot(data=nwc,aes(x=range,y=rate))+
+  ylab("Population Growth Rate")+theme(text=element_text(size=10),axis.text = element_text(size=10))+
+  geom_sina(shape=21,stroke=0.5,col="grey")+geom_boxplot(notch=T,fill=NA,outlier.colour = NA)
+print(p)
+dev.off()
 #add zero-report years
 anhu <- join(anhu,eff,type="full",by=c("Name","year","Count_yr"))
 
