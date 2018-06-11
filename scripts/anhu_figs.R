@@ -77,7 +77,8 @@ plot1 <- ggplot()+theme_bw()+theme(panel.grid=element_blank())+coord_map()+
         axis.ticks = element_blank(),
         axis.text=element_blank(),
         text=element_text(size=8),
-        panel.border = element_blank())+
+        panel.border = element_blank(),
+        panel.background = element_blank())+
   xlab("")+ylab("")+
   scale_color_viridis(name="Population\nGrowth\nRate",direction = -1,option = "inferno")+
   geom_path(data=state,aes(x=long,y=lat,group=group),lwd=0.2,col="grey")+
@@ -94,12 +95,13 @@ plot2 <- ggplot()+theme_bw()+theme(panel.grid=element_blank())+coord_map()+
         axis.text=element_blank(),
         legend.text=element_text(size=8),
         legend.title=element_text(size=8),
-        panel.border = element_blank())+
+        panel.border = element_blank(),
+        panel.background = element_blank())+
   xlab("")+ylab("")+
   scale_color_brewer(name="Best Model",palette="Dark2")+
   geom_path(data=state,aes(x=long,y=lat,group=group),lwd=0.2,col="grey")+
   geom_path(data=map,aes(x=long,y=lat,group=group),lwd=0.3)+
-  geom_point(data=plotdata[plotdata$delta_aic<2,],aes(x=long,y=lat,col=best_model),shape=21,size=1.1,stroke=0.5,alpha=0.8)+
+  geom_point(data=plotdata[plotdata$delta_aic<2,],aes(x=long,y=lat,col=best_model),shape=21,size=0.9)+
   geom_point(data=plotdata[plotdata$delta_aic>2,],aes(x=long,y=lat,col=best_model),size=1.3)
 
 plot2 <- plot2+guides(color=guide_legend(override.aes=list(size=4)))
@@ -127,16 +129,15 @@ mean(subset(best_model_summary,state %in% c("CA") & variable=="Linear")$value)
 mean(subset(best_model_summary,state %in% c("OR","WA","BC") & variable=="Exponential")$value)
 mean(subset(best_model_summary,state %in% c("TX","AZ") & variable=="Exponential")$value)
 
-# dat <- subset(anhu,Name %in% c("Oceanside-Vista-Carlsbad","Los Angeles","San Jose","Centerville Beach to King Salmon","Medford","Portland","Seattle","Vancouver"))
-# dat$Name <- factor(dat$Name,levels=c("Oceanside-Vista-Carlsbad","Los Angeles","San Jose","Centerville Beach to King Salmon","Medford","Portland","Seattle","Vancouver"))
 dat <- subset(anhu,Name %in% c("El Paso","Santa Catalina Mountains","Tucson Valley",
                                "Santa Barbara","Santa Cruz County","Oakland","Redding",
                               "Eugene","Portland","Seattle","Nanaimo","Vancouver"))
 dat$Name <- sapply(dat$Name,function(e){str_wrap(e,width=14)})
-dat$Name <- apply(dat,1,function(e){if(e[16]=="CA"){paste0(e[1],"*")}else{e[1]}})
+dat$Name <- apply(dat,1,function(e){if(!is.na(e[16]) & e[16]=="CA"){paste0(e[1],"*")}else{e[1]}})
 dat$Name <- factor(dat$Name,levels=rev(c("El Paso","Santa Catalina\nMountains","Tucson Valley",
                                      "Santa Barbara*","Santa Cruz\nCounty*","Oakland*","Redding*",
                                      "Eugene","Portland","Seattle","Nanaimo","Vancouver")))
+dat <- subset(dat,!is.na(Name))
 zeros <- subset(dat,abundance_index==0)
 dat <- subset(dat,abundance_index>0)
 time_plots <- ggplot()+
