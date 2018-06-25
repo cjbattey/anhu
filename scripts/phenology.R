@@ -82,6 +82,15 @@ nest$total <- apply(nest,1,function(e){if(e[5]=="Native"){882}else if(e[5]=="PNW
 #figure 3 - nest map 
 nest$range <- factor(nest$range,levels=c("PNW","Native","SW"))
 map <- map_data("world");state <- map_data("state")
+
+medians <- ddply(nest,.(range),summarize,median=median(breeding_day,rm=T),quant_low=quantile(breeding_day,0.1),quant_high=quantile(breeding_day,0.9))
+medians$range <- factor(medians$range,levels=c("PNW","Native","SW"))
+monthdays <- data.frame(jday=c(1,32,60,91,121,152,182,213,244,274,305,335),
+                        breeding_day=c(60,91,119,150,180,211,241,272,303,333,1,29),
+                        month=c("January","February","March","April","May","June","July",
+                                "August","September","October","November","December"),
+                        y=6.3)
+legend <- data.frame(range=factor(c("PNW","Native","SW"),levels=c("PNW","Native","SW")),breeding_day=c(1,1,1),text=c("PNW","Native","SW"))
 nest_map <- ggplot()+coord_map()+
              theme_minimal()+theme(legend.position="none",#c(0.15,0.2),
                                    legend.direction = "horizontal",
@@ -99,31 +108,9 @@ nest_map <- ggplot()+coord_map()+
              geom_point(data=nest,aes(x=LONGITUDE,y=LATITUDE,col=range),shape=1,size=0.9)
 nest_map <- nest_map+guides(color=guide_legend(override.aes = list(size=4,shape=16),title = "Range"))
 
-medians <- ddply(nest,.(range),summarize,median=median(breeding_day,rm=T))
-medians$range <- factor(medians$range,levels=c("PNW","Native","SW"))
-monthdays <- data.frame(jday=c(1,32,60,91,121,152,182,213,244,274,305,335),
-                        breeding_day=c(60,91,119,150,180,211,241,272,303,333,1,29),
-                        month=c("January","February","March","April","May","June","July",
-                                "August","September","October","November","December"),
-                        y=6.2)
-nest_circles <- ggplot(data=nest,aes(x=breeding_day,y=as.integer(range)+2,col=range))+coord_polar()+
-  theme(text=element_text(size=8),
-        panel.background = element_rect(color="white"),
-        panel.grid.major=element_line(color="grey",size=0.25),
-        axis.line = element_blank(),
-        axis.text=element_blank(),
-        axis.ticks=element_blank())+
-  xlab("")+ylab("")+
-  scale_y_continuous(breaks=c(3,4,5),limits=c(1,6.5))+
-  scale_x_continuous(breaks=c(1,32,60,91,121,152,182,213,244,274,305,335),limits=c(1,365))+
-  scale_color_manual(values=brewer.pal(3,"Dark2")[c(1,3,2)],name="Range")+
-  geom_point(position=position_jitter(height=0.3),alpha=0.4)+
-  geom_segment(data=medians,aes(x=median,xend=median,y=as.integer(range)+1.5,yend=as.integer(range)+2.5),col="black")+
-  geom_text(data=monthdays,aes(x=breeding_day+15,y=y,label=month),col="black",size=3)
-
 nest_histograms <- ggplot(data=nest,aes(x=breeding_day,fill=range))+
   theme_classic()+theme(text=element_text(size=8),legend.position = c(.7,.7))+
-  scale_fill_brewer(palette = "Dark2",guide=F)+
+  scale_fill_manual(values=brewer.pal(3,"Dark2")[c(3,1,2)])+
   scale_color_brewer(palette = "Dark2",guide=F)+
   ylab("Active Nests")+xlab("Days from Nov 1")+
   geom_histogram(data=nest[nest$range=="Native",],bins=50,alpha=0.7)+
@@ -131,16 +118,31 @@ nest_histograms <- ggplot(data=nest,aes(x=breeding_day,fill=range))+
   geom_histogram(data=nest[nest$range=="PNW",],bins=50,alpha=0.7)+
   geom_segment(data=medians,aes(x=median,xend=median,y=0,yend=-3,col=range),lwd=0.35)
 
-ggplot(data=nest,aes(x=breeding_day,y=range,fill=range))+
-  theme_minimal()+theme(text=element_text(size=8),
-                        legend.position = "none",
-                        axis.title.y=element_blank())+
-  scale_fill_manual(values=brewer.pal(3,"Dark2")[c(1,3,2)])+
-  scale_y_discrete(expand=c(0.01,0))+
-  xlab("Days from Nov 1")+
+nest_histogram_circle <- ggplot(data=nest,aes(x=breeding_day,y=as.integer(range)+2,fill=range))+coord_polar()+
+  theme(text=element_text(size=8),
+        legend.position = "none",
+        axis.title.y=element_blank(),
+        panel.grid.major =element_line(colour = "grey",size=0.5),
+        panel.grid.major.y=element_blank(),
+        axis.text=element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank())+
+  scale_fill_manual(values=brewer.pal(3,"Dark2")[c(3,1,2)])+
+  scale_y_discrete(expand=c(-0.1,0),limits=c(0,5))+
+  scale_x_continuous(breaks=c(1,32,60,91,121,152,182,213,244,274,305,335),limits=c(1,365))+
   geom_density_ridges(stat = "binline", bins = 100, scale = 0.99, draw_baseline = T)+
-  geom_segment(data=medians,aes(x=median,xend=median,y=range,yend=as.numeric(as.character(range))-.05))
-
+  geom_segment(data=medians,aes(x=median,xend=median,y=as.integer(range)+2,
+                                yend=as.integer(range)+1.6),col="black",lwd=1)+
+  geom_segment(data=medians,aes(x=quant_low,xend=quant_low,y=as.integer(range)+2,
+                                yend=as.integer(range)+1.6),col="black",linetype=6,lwd=1)+
+  geom_segment(data=medians,aes(x=quant_high,xend=quant_high,y=as.integer(range)+2,
+                                yend=as.integer(range)+1.6),col="black",linetype=6,lwd=1)+
+  geom_text(data=monthdays,aes(x=breeding_day+15,y=y,label=month,fill=NA),col="black",size=2.5)+
+  geom_point(data=data.frame(x=0,y=0),aes(x=x,y=y,fill=NA),col="grey")+
+  geom_label(data=legend,aes(label=text),size=2.5)
+ 
 nest_points <- ggplot(data=nest,aes(x=range,y=breeding_day))+
   theme_minimal()+
   theme(text=element_text(size=8),axis.text = element_text(size=8))+
@@ -152,11 +154,36 @@ nest_points <- ggplot(data=nest,aes(x=range,y=breeding_day))+
   geom_signif(comparisons=list(c("Native","PNW")),
               map_signif_level = T,y_position = 320)
 
+nest_circles <- ggplot(data=nest,aes(x=breeding_day,y=as.integer(range)+2,col=range))+coord_polar()+
+  theme(text=element_text(size=8),
+        panel.background = element_rect(color="white"),
+        panel.grid.major=element_line(color="grey",size=0.25),
+        axis.line = element_blank(),
+        axis.text=element_blank(),
+        axis.ticks=element_blank(),
+        legend.position = "none",
+        legend.background = element_rect(fill = "white"),
+        legend.title = element_blank())+
+  xlab("")+ylab("")+
+  scale_y_continuous(breaks=c(3,4,5),limits=c(1,6.5))+
+  scale_x_continuous(breaks=c(1,32,60,91,121,152,182,213,244,274,305,335),limits=c(1,365))+
+  scale_color_manual(values=brewer.pal(3,"Dark2")[c(1,3,2)])+
+  geom_point(position=position_jitter(height=0.3),alpha=0.4)+
+  geom_segment(data=medians,aes(x=median,xend=median,y=as.integer(range)+1.5,yend=as.integer(range)+2.5),
+               col="black")+
+  geom_segment(data=medians,aes(x=quant_low,xend=quant_low,y=as.integer(range)+1.5,
+                                yend=as.integer(range)+2.5),col="black",linetype=6)+
+  geom_segment(data=medians,aes(x=quant_high,xend=quant_high,y=as.integer(range)+1.5,
+                                yend=as.integer(range)+2.5),col="black",linetype=6)+
+  geom_text(data=monthdays,aes(x=breeding_day+15,y=y,label=month),col="black",size=2.5)+
+  geom_label(data=legend,aes(label=text),size=2.5)
+
 #png("figures/Figure_3.png",width=3,height=2.5,units = "in",res=600)
-pdf("figures/Figure_3.pdf",width=3,height=2.5,useDingbats = F)
+pdf("figures/Figure_3.pdf",width=3.5,height=3.5,useDingbats = F)
 ggdraw()+
-  draw_plot(nest_map,0,0,1,1)+
-  draw_plot(nest_circles,.4,0.2,.6,.9)
-  #draw_text("Active Nests",0.5,0.9)
+  draw_plot(nest_circles,-0.1,-0.1,1.15,1.15)
 dev.off()
 
+pdf("figures/phenology_fig_demo.pdf",width=6.5,height=6.5)
+plot_grid(nest_histograms,nest_points,nest_circles,nest_histogram_circle)
+dev.off()
