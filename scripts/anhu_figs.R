@@ -1,58 +1,6 @@
 
-######################## figures ##############################
-#Figure 1 - first year reported 
-map <- map_data("world");state <- map_data("state")
-#png("figures/Figure_1.png",width=3,height=2.8,units="in",res=600)
-pdf("figures/Figure_1.pdf",width=3.5,height=3,useDingbats = F)
-p <- ggplot()+coord_map()+
-  theme_bw()+theme(panel.grid=element_blank(),
-                   legend.position = c(.1,.5),
-                   legend.background = element_blank(),
-                   text=element_text(size=8),
-                   panel.border = element_blank(),
-                   axis.text = element_blank(),
-                   axis.ticks = element_blank(),
-                   axis.title = element_blank())+
-  xlim(-132,-95)+ylim(27,52)+
-  scale_fill_viridis(name="First\nOccurrence\nRecord")+
-  geom_path(data=state,aes(x=long,y=lat,group=group),lwd=0.1,col="grey")+
-  geom_path(data=map,aes(x=long,y=lat,group=group),lwd=0.2)+
-  stat_summary_2d(data=combo,aes(x=long,y=lat,z=year),fun="min",bins=50,alpha=0.9)
-p <- p+guides(fill=guide_colourbar(barwidth = unit(4,"mm"),barheight = unit(20,"mm")))
-ggdraw()+
-  draw_plot(p,0,0,1,1)+
-  draw_image("~/Desktop/IMGP8874.jpg",.56,.42,.45,.5)
-dev.off()
-
-# map <- map_data("world");state <- map_data("state")
-# #png("figures/Figure_1.png",width=3,height=2.8,units="in",res=600)
-# pdf("figures/Figure_1.pdf",width=6,height=3,useDingbats = F)
-# p <- ggplot()+coord_map()+
-#   theme_bw()+theme(panel.grid=element_blank(),
-#                    legend.position = c(.1,.5),
-#                    legend.background = element_blank(),
-#                    text=element_text(size=8),
-#                    panel.border = element_blank(),
-#                    axis.text = element_blank(),
-#                    axis.ticks = element_blank(),
-#                    axis.title = element_blank())+
-#   xlim(-132,-95)+ylim(27,52)+
-#   #xlim(-140,-95)+ylim(25,58)+
-#   scale_fill_viridis(name="First\nOccurrence\nRecord")+
-#   geom_path(data=state,aes(x=long,y=lat,group=group),lwd=0.1,col="grey")+
-#   geom_path(data=map,aes(x=long,y=lat,group=group),lwd=0.2)+
-#   stat_summary_2d(data=combo,aes(x=long,y=lat,z=year),fun="min",bins=100,alpha=0.9)
-# p <- p+guides(fill=guide_colourbar(barwidth = unit(4,"mm"),barheight = unit(20,"mm")))
-# ggdraw()+
-#   draw_plot(p,0,0,.66,1)+
-#   draw_image("~/Desktop/IMGP3506.jpg",.61,0,.34,1)
-# dev.off()
-
-
 #Figure 2 - population growth
-#png("figures/Figure_2.png",width=6,height=6,units="in",res=600)
-pdf("figures/Figure_2.pdf",width=6,height=6,useDingbats = F)
-tmp <- subset(anhu,!is.na(anhu$best_model))
+tmp <- subset(anhu,!is.na(anhu$best_model.X1))
 map <- map_data("world");state <- map_data("state")
 plotdata <- ddply(tmp,.(Name),summarize,
                   min_year=min(Count_yr),
@@ -62,11 +10,20 @@ plotdata <- ddply(tmp,.(Name),summarize,
                   exp_growth_rate=exp_growth_rate[1],
                   log_growth_rate=log_growth_rate[1],
                   log_k=log_K[1],
-                  best_model=best_model[1],
+                  best_model=best_model.X1[1],
+                  second_model=best_model.X2[1],
                   long=Longitude[1],
                   lat=Latitude[1],
-                  delta_aic=delta_aic[1])
-plotdata$best_model <- factor(plotdata$best_model,levels=c("Logistic","Exponential","Linear"))
+                  delta_aic=delta_aic[1],
+                  aic_lin=aic_lin[1],
+                  aic_exp=aic_exp[1],
+                  aic_log=aic_log[1])
+#plotdata$R2_exp_model <- 
+plotdata$best_model <- factor(plotdata$best_model,levels=c("Linear","Logistic","Exponential"))
+plotdata$second_model <- factor(plotdata$second_model,levels=c("Linear","Logistic","Exponential"))
+#set column to scale alpha if delta_aic is < 2
+plotdata$aic_alpha_scale <- plotdata$delta_aic
+plotdata$aic_alpha_scale[plotdata$aic_alpha_scale>2] <- 2
 
 plot1 <- ggplot()+theme_bw()+theme(panel.grid=element_blank())+coord_map()+
   #xlim(min(plotdata$long)-1,max(plotdata$long)+1)+ylim(min(plotdata$lat)-1,max(plotdata$lat)+1)+
@@ -78,11 +35,13 @@ plot1 <- ggplot()+theme_bw()+theme(panel.grid=element_blank())+coord_map()+
         axis.text=element_blank(),
         text=element_text(size=8),
         panel.border = element_blank(),
-        panel.background = element_blank())+
+        panel.background = element_blank(),
+        plot.background = element_blank())+
   xlab("")+ylab("")+
   scale_color_viridis(name="Population\nGrowth\nRate",direction = -1,option = "inferno")+
+  #scale_color_distiller(name="Population\nGrowth\nRate",direction = -1,palette="RdYlBu")+
   geom_path(data=state,aes(x=long,y=lat,group=group),lwd=0.2,col="grey")+
-  geom_path(data=map,aes(x=long,y=lat,group=group),lwd=0.3)+
+  geom_path(data=map,aes(x=long,y=lat,group=group),lwd=0.2)+
   geom_point(data=plotdata,aes(x=long,y=lat,col=exp_growth_rate),size=1)
 #stat_summary_2d(data=plotdata,aes(x=long,y=lat,z=exp_growth_rate),fun="mean",bins=60)
 plot1 <- plot1+guides(fill=guide_colourbar(barwidth = unit(4,"mm"),barheight = unit(20,"mm")))
@@ -96,21 +55,26 @@ plot2 <- ggplot()+theme_bw()+theme(panel.grid=element_blank())+coord_map()+
         legend.text=element_text(size=8),
         legend.title=element_text(size=8),
         panel.border = element_blank(),
-        panel.background = element_blank())+
+        panel.background = element_blank(),
+        plot.background = element_blank())+
   xlab("")+ylab("")+
-  scale_color_brewer(name="Best Model",palette="Dark2")+
+  scale_color_manual(name="Model",values=c(brewer.pal(3,"Dark2")[3],brewer.pal(3,"Dark2")[1],brewer.pal(3,"Dark2")[2]))+
+  #scale_color_brewer(name="Best Model",palette="Dark2")+
+  scale_alpha(guide=F)+
   geom_path(data=state,aes(x=long,y=lat,group=group),lwd=0.2,col="grey")+
-  geom_path(data=map,aes(x=long,y=lat,group=group),lwd=0.3)+
-  geom_point(data=plotdata[plotdata$delta_aic<2,],aes(x=long,y=lat,col=best_model),shape=21,size=0.9)+
-  geom_point(data=plotdata[plotdata$delta_aic>2,],aes(x=long,y=lat,col=best_model),size=1.3)
+  geom_path(data=map,aes(x=long,y=lat,group=group),lwd=0.2)+
+  geom_point(data=plotdata[plotdata$delta_aic<2,],aes(x=long,y=lat,col=best_model),size=0.8,alpha=0.7,shape=16)+
+  geom_point(data=plotdata[plotdata$delta_aic<2,],aes(x=long,y=lat,col=second_model),shape=21,size=0.8,stroke=0.4)+
+  geom_point(data=plotdata[plotdata$delta_aic>=2,],aes(x=long,y=lat,col=best_model),size=.6)
+  #geom_point(data=plotdata,aes(x=long,y=lat,col=best_model,alpha=aic_alpha_scale),size=.7)
 
 plot2 <- plot2+guides(color=guide_legend(override.aes=list(size=4)))
 
 best_model_summary <- ddply(anhu,.(state),function(e){
-  logistic <- nrow(subset(e,best_model=="Logistic"))/nrow(subset(e,!is.na(e$best_model)))
-  exponential <- nrow(subset(e,best_model=="Exponential"))/nrow(subset(e,!is.na(e$best_model)))
-  linear <- nrow(subset(e,best_model=="Linear"))/nrow(subset(e,!is.na(e$best_model)))
-  c(Logistic=logistic,Exponential=exponential,Linear=linear)
+  logistic <- nrow(subset(e,best_model.X1=="Logistic"))/nrow(subset(e,!is.na(e$best_model.X1)))
+  exponential <- nrow(subset(e,best_model.X1=="Exponential"))/nrow(subset(e,!is.na(e$best_model.X1)))
+  constant <- nrow(subset(e,best_model.X1=="Linear"))/nrow(subset(e,!is.na(e$best_model.X1)))
+  c(Logistic=logistic,Exponential=exponential,Linear=constant)
 }) %>% melt()
 best_model_summary <- subset(best_model_summary,state %in% c("CA","AZ","TX","OR","WA","BC"))
 best_model_summary$state <- factor(best_model_summary$state,levels=c("CA","AZ","NV","NM","TX","OR","WA","BC"))
@@ -151,16 +115,18 @@ time_plots <- ggplot()+
   facet_wrap(~Name,ncol=4,scales="free_y")+xlab("Year")+
   geom_point(data=zeros,aes(x=year,y=abundance_index),col="grey",shape=1)+
   geom_point(data=dat,aes(x=year,y=abundance_index),col="black",shape=1)+
-  geom_line(data=dat[dat$best_model=="Exponential",],aes(x=year,y=exp_model),col="red")+
-  geom_line(data=dat[dat$best_model=="Exponential",],aes(x=year,y=exp_CI_low),col="red",linetype=2,lwd=0.35)+
-  geom_line(data=dat[dat$best_model=="Exponential",],aes(x=year,y=exp_CI_high),col="red",linetype=2,lwd=0.35)+
-  geom_line(data=dat[dat$best_model=="Logistic",],aes(x=year,y=log_model),col="red")+
-  geom_line(data=dat[dat$best_model=="Logistic",],aes(x=year,y=log_CI_low),col="red",linetype=2,lwd=0.35)+
-  geom_line(data=dat[dat$best_model=="Logistic",],aes(x=year,y=log_CI_high),col="red",linetype=2,lwd=0.35)+
-  geom_line(data=dat[dat$best_model=="Linear",],aes(x=year,y=lin_model),col="red")+
-  geom_line(data=dat[dat$best_model=="Linear",],aes(x=year,y=lin_CI_low),col="red",linetype=2,lwd=0.35)+
-  geom_line(data=dat[dat$best_model=="Linear",],aes(x=year,y=lin_CI_high),col="red",linetype=2,lwd=0.35)
+  geom_line(data=dat[dat$best_model.X1=="Exponential",],aes(x=year,y=exp_model),col="#D95F02")+
+  geom_line(data=dat[dat$best_model.X1=="Exponential",],aes(x=year,y=exp_CI_low),col="#D95F02",linetype=2,lwd=0.35)+
+  geom_line(data=dat[dat$best_model.X1=="Exponential",],aes(x=year,y=exp_CI_high),col="#D95F02",linetype=2,lwd=0.35)+
+  geom_line(data=dat[dat$best_model.X1=="Logistic",],aes(x=year,y=log_model),col="#1B9E77")+
+  geom_line(data=dat[dat$best_model.X1=="Logistic",],aes(x=year,y=log_CI_low),col="#1B9E77",linetype=2,lwd=0.35)+
+  geom_line(data=dat[dat$best_model.X1=="Logistic",],aes(x=year,y=log_CI_high),col="#1B9E77",linetype=2,lwd=0.35)+
+  geom_line(data=dat[dat$best_model.X1=="Linear",],aes(x=year,y=lin_model),col="#7570B3")+
+  geom_line(data=dat[dat$best_model.X1=="Linear",],aes(x=year,y=lin_CI_low),col="#7570B3",linetype=2,lwd=0.35)+
+  geom_line(data=dat[dat$best_model.X1=="Linear",],aes(x=year,y=lin_CI_high),col="#7570B3",linetype=2,lwd=0.35)
 
+#png("figures/Figure_2.png",width=6,height=6,units="in",res=600)
+pdf("figures/Figure_2_no_limits.pdf",width=6,height=6,useDingbats = F)
 ggdraw()+
   draw_plot(plot1,0,.55,.5,.45)+
   draw_plot(plot2,.5,.55,.5,.45)+
@@ -186,7 +152,7 @@ p <- ggplot()+coord_map()+
   facet_wrap(~source,nrow=2)+
   #xlim(-132,-94)+ylim(27,54)+
   ylim(min(combo$lat)-1,max(combo$lat)+1)+xlim(min(combo$long)-1,max(combo$long)+1)+
-  xlim(-152,-80)+ylim(20,64)+
+  xlim(-152,-60)+ylim(20,64)+
   scale_fill_viridis(name="First\nOccurrence\nRecord")+
   geom_path(data=state,aes(x=long,y=lat,group=group),lwd=0.1,col="grey")+
   geom_path(data=map,aes(x=long,y=lat,group=group),lwd=0.2)+
@@ -203,7 +169,7 @@ for(i in unique(anhu2$state)){
   zeros <- subset(dat2,abundance_index==0)
   dat2 <- subset(dat2,abundance_index>0)
   if(nrow(dat2)>1){
-    pdf(paste0("sup_figs/anhu_cbc_best_model_",i,".pdf"),width=6,height=ceiling((length(unique(dat2$Name))/4))*1.5,useDingbats = F)
+    pdf(paste0("sup_figs/anhu_cbc_best_model_",i,".pdf"),width=7.5,height=ceiling((length(unique(dat2$Name))/4))*1.5,useDingbats = F)
     print(ggplot()+
             theme_minimal()+theme(strip.background = element_blank(),
                                   strip.text = element_text(size=8),
@@ -212,15 +178,24 @@ for(i in unique(anhu2$state)){
             xlim(1950,2017)+
             geom_point(data=zeros,aes(x=year,y=abundance_index),col="grey",shape=1)+
             geom_point(data=dat2,aes(x=Count_yr+1900,y=abundance_index),col="black",shape=1)+
-            geom_line(data=dat2[dat2$best_model=="Exponential",],aes(x=Count_yr+1900,y=exp_model),col="red")+
-            geom_line(data=dat2[dat2$best_model=="Exponential",],aes(x=Count_yr+1900,y=exp_CI_low),col="red",linetype=2,lwd=0.35)+
-            geom_line(data=dat2[dat2$best_model=="Exponential",],aes(x=Count_yr+1900,y=exp_CI_high),col="red",linetype=2,lwd=0.35)+
-            geom_line(data=dat2[dat2$best_model=="Logistic",],aes(x=Count_yr+1900,y=log_model),col="red")+
-            geom_line(data=dat2[dat2$best_model=="Logistic",],aes(x=Count_yr+1900,y=log_CI_low),col="red",linetype=2,lwd=0.35)+
-            geom_line(data=dat2[dat2$best_model=="Logistic",],aes(x=Count_yr+1900,y=log_CI_high),col="red",linetype=2,lwd=0.35)+
-            geom_line(data=dat2[dat2$best_model=="Linear",],aes(x=Count_yr+1900,y=lin_model),col="red")+
-            geom_line(data=dat2[dat2$best_model=="Linear",],aes(x=Count_yr+1900,y=lin_CI_low),col="red",linetype=2,lwd=0.35)+
-            geom_line(data=dat2[dat2$best_model=="Linear",],aes(x=Count_yr+1900,y=lin_CI_high),col="red",linetype=2,lwd=0.35)
+            geom_line(data=dat2[dat2$best_model.X1=="Exponential",],aes(x=Count_yr+1900,y=exp_model),col="#D95F02")+
+            geom_line(data=dat2[dat2$best_model.X1=="Exponential",],aes(x=Count_yr+1900,y=exp_CI_low),col="#D95F02",linetype=2,lwd=0.35)+
+            geom_line(data=dat2[dat2$best_model.X1=="Exponential",],aes(x=Count_yr+1900,y=exp_CI_high),col="#D95F02",linetype=2,lwd=0.35)+
+            geom_line(data=dat2[dat2$best_model.X1=="Logistic",],aes(x=Count_yr+1900,y=log_model),col="#1B9E77")+
+            geom_line(data=dat2[dat2$best_model.X1=="Logistic",],aes(x=Count_yr+1900,y=log_CI_low),col="#1B9E77",linetype=2,lwd=0.35)+
+            geom_line(data=dat2[dat2$best_model.X1=="Logistic",],aes(x=Count_yr+1900,y=log_CI_high),col="#1B9E77",linetype=2,lwd=0.35)+
+            geom_line(data=dat2[dat2$best_model.X1=="Linear",],aes(x=Count_yr+1900,y=lin_model),col="#7570B3")+
+            geom_line(data=dat2[dat2$best_model.X1=="Linear",],aes(x=Count_yr+1900,y=lin_CI_low),col="#7570B3",linetype=2,lwd=0.35)+
+            geom_line(data=dat2[dat2$best_model.X1=="Linear",],aes(x=Count_yr+1900,y=lin_CI_high),col="#7570B3",linetype=2,lwd=0.35)+
+            geom_line(data=dat2[dat2$best_model.X2=="Exponential" & dat2$delta_aic<2,],aes(x=Count_yr+1900,y=exp_model),col="#D95F02")+
+            geom_line(data=dat2[dat2$best_model.X2=="Exponential" & dat2$delta_aic<2,],aes(x=Count_yr+1900,y=exp_CI_low),col="#D95F02",linetype=2,lwd=0.35)+
+            geom_line(data=dat2[dat2$best_model.X2=="Exponential" & dat2$delta_aic<2,],aes(x=Count_yr+1900,y=exp_CI_high),col="#D95F02",linetype=2,lwd=0.35)+
+            geom_line(data=dat2[dat2$best_model.X2=="Logistic" & dat2$delta_aic<2,],aes(x=Count_yr+1900,y=log_model),col="#1B9E77")+
+            geom_line(data=dat2[dat2$best_model.X2=="Logistic" & dat2$delta_aic<2,],aes(x=Count_yr+1900,y=log_CI_low),col="#1B9E77",linetype=2,lwd=0.35)+
+            geom_line(data=dat2[dat2$best_model.X2=="Logistic" & dat2$delta_aic<2,],aes(x=Count_yr+1900,y=log_CI_high),col="#1B9E77",linetype=2,lwd=0.35)+
+            geom_line(data=dat2[dat2$best_model.X2=="Linear" & dat2$delta_aic<2,],aes(x=Count_yr+1900,y=lin_model),col="#7570B3")+
+            geom_line(data=dat2[dat2$best_model.X2=="Linear" & dat2$delta_aic<2,],aes(x=Count_yr+1900,y=lin_CI_low),col="#7570B3",linetype=2,lwd=0.35)+
+            geom_line(data=dat2[dat2$best_model.X2=="Linear" & dat2$delta_aic<2,],aes(x=Count_yr+1900,y=lin_CI_high),col="#7570B3",linetype=2,lwd=0.35)
     )
     dev.off()
   }

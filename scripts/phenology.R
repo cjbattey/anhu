@@ -24,7 +24,7 @@ nest$range <- apply(nest,1,function(e){
 nest <- ddply(nest,.(LATITUDE,LONGITUDE,STATE_PROVINCE,year,range),summarize,jday=min(jday))
 
 #vertnet
-vertnet <- fread("~/Downloads/anhu_vertnet_nests_may2018.txt",data.table = F)
+vertnet <- fread("data/anhu_vertnet_nests_may2018.txt",data.table = F)
 vertnet <- subset(vertnet,!is.na(month))
 range <- c()
 for(i in 1:nrow(vertnet)){
@@ -63,22 +63,38 @@ wilcox.test(formula=breeding_day~range,data=subset(nest,range %in% c("Native","P
 wilcox.test(formula=breeding_day~range,data=subset(nest,range %in% c("Native","SW")),conf.int=T)
 
 #downsample california
-diffs <- c()
+sw_diffs <- data.frame(early=numeric(),median=numeric())
+nw_diffs <- data.frame(early=numeric(),median=numeric())
 ca <- subset(nest,range=="Native");pnw <- subset(nest,range=="PNW");sw <- subset(nest,range=="SW")
-for(i in 1:1e4){
+for(i in 1:1e3){
   tmp <- ca[sample(1:nrow(ca),124,replace = F),]
-  diffs[i] <- quantile(tmp$breeding_day,0.1)-quantile(sw$breeding_day,0.1)
-  #diffs[i] <- median(tmp$breeding_day)-median(sw$breeding_day)
+  sw_diffs[i,] <- c(quantile(sw$breeding_day,0.1)-quantile(tmp$breeding_day,0.1),
+                    median(sw$breeding_day)-median(tmp$breeding_day))
+  nw_diffs[i,] <- c(quantile(pnw$breeding_day,0.1)-quantile(tmp$breeding_day,0.1),
+                    median(pnw$breeding_day)-median(tmp$breeding_day))
 }
-quantile(diffs,0.95)
-ggplot(data=data.frame(diffs),aes(x=diffs))+theme_minimal()+
-  geom_density(fill="grey")+
-  #geom_segment(aes(x=quantile(diffs,0.975),xend=quantile(diffs,0.975),y=0,yend=..density..))
-  geom_vline(aes(xintercept=quantile(diffs,0.975)),col="white",linetype=2,lwd=1)
+sw_diffs$comp <- "Interior Southwest"
+nw_diffs$comp <- "Pacific Northwest"
+diffs <- rbind(sw_diffs,nw_diffs)
+names(diffs) <- c("10th Quantile\nof Nest Reports","Median Nest Report","comp")
+mdiffs <- melt(diffs)
+
+sub_diff_plot <- ggplot(data=mdiffs,aes(x=value,y=comp))+
+  theme_classic()+facet_wrap(~variable)+
+  theme(panel.grid.major = element_line(size=0.5,color="grey80"),
+        strip.text = element_text(size=8),
+        axis.text=element_text(size=8),
+        axis.title=element_text(size=10))+
+  xlab("Days Later Than California")+
+  ylab("")+
+  coord_cartesian(clip='off')+
+  stat_density_ridges(scale=0.95,quantile_lines = T, quantiles=c(0.025,0.975))
+  geom_vline(aes(xintercept=0),col="white",linetype=2,lwd=1)
 
 wilcox.test(formula=breeding_day~range,data=subset(tmp,range %in% c("Native","PNW")),conf.int=T)
-wilcox.test(formula=breeding_day~range,data=subset(nest,range %in% c("Native","SW")),conf.int=T)
+wilcox.test(formula=breeding_day~range,data=subset(nest,range %in% c("Native","PNW")),conf.int=T)
 nest$total <- apply(nest,1,function(e){if(e[5]=="Native"){882}else if(e[5]=="PNW"){124}else if(e[5]=="SW"){181}})
+
 #figure 3 - nest map 
 nest$range <- factor(nest$range,levels=c("PNW","Native","SW"))
 map <- map_data("world");state <- map_data("state")
@@ -87,8 +103,8 @@ medians <- ddply(nest,.(range),summarize,median=median(breeding_day,rm=T),quant_
 medians$range <- factor(medians$range,levels=c("PNW","Native","SW"))
 monthdays <- data.frame(jday=c(1,32,60,91,121,152,182,213,244,274,305,335),
                         breeding_day=c(60,91,119,150,180,211,241,272,303,333,1,29),
-                        month=c("January","February","March","April","May","June","July",
-                                "August","September","October","November","December"),
+                        month=c("Jan","Feb","Mar","Apr","May","Jun","Jul",
+                                "Aug","Sept","Oct","Nov","Dec"),
                         y=6.3)
 legend <- data.frame(range=factor(c("PNW","Native","SW"),levels=c("PNW","Native","SW")),breeding_day=c(1,1,1),text=c("PNW","Native","SW"))
 nest_map <- ggplot()+coord_map()+
@@ -147,7 +163,8 @@ nest_points <- ggplot(data=nest,aes(x=range,y=breeding_day))+
   theme_minimal()+
   theme(text=element_text(size=8),axis.text = element_text(size=8))+
   scale_color_manual(values=brewer.pal(3,"Dark2")[c(1,3,2)])+
-  ylab("Days from Nov 1")+xlab("Range")+
+  ylab("")+xlab("Range")+
+  scale_y_continuous(breaks=monthdays$breeding_day,labels = monthdays$month,limits=c(0,364))+
   geom_sina(scale=F,maxwidth=.8,method="count",shape=21,aes(col=range))+
   geom_boxplot(fill=NA,outlier.colour = NA,notch = T)+
   #geom_violin(fill=NA,outlier.shape = NA,draw_quantiles = 0.5,scale = "count")+
@@ -155,8 +172,9 @@ nest_points <- ggplot(data=nest,aes(x=range,y=breeding_day))+
               map_signif_level = T,y_position = 320)
 
 nest_circles <- ggplot(data=nest,aes(x=breeding_day,y=as.integer(range)+2,col=range))+coord_polar()+
-  theme(text=element_text(size=8),
+        theme(text=element_text(size=8),
         panel.background = element_rect(color="white"),
+        plot.background = element_rect(color="white"),
         panel.grid.major=element_line(color="grey",size=0.25),
         axis.line = element_blank(),
         axis.text=element_blank(),
@@ -178,11 +196,23 @@ nest_circles <- ggplot(data=nest,aes(x=breeding_day,y=as.integer(range)+2,col=ra
   geom_text(data=monthdays,aes(x=breeding_day+15,y=y,label=month),col="black",size=2.5)+
   geom_label(data=legend,aes(label=text),size=2.5)
 
-#png("figures/Figure_3.png",width=3,height=2.5,units = "in",res=600)
-pdf("figures/Figure_3.pdf",width=3.5,height=3.5,useDingbats = F)
+#png("figures/Figure_3.png",width=6.5,height=3,units = "in",res=600)
+pdf("figures/Figure_3.pdf",width=3.5,height=3,useDingbats = F)
 ggdraw()+
-  draw_plot(nest_circles,-0.1,-0.1,1.15,1.15)
+  draw_plot(nest_circles,-0.13,-0.13,1.2,1.2)
+  #draw_plot(sub_diff_plot,0.4,0,0.6,1)
 dev.off()
+
+
+#png("figures/Figure_3.png",width=6.5,height=3,units = "in",res=600)
+pdf("figures/Figure_3.pdf",width=3.5,height=3,useDingbats = F)
+ggdraw()+
+  draw_plot(nest_map,-0.05,0.02,0.55,1)+
+  draw_plot(nest_points,0.41,0,.6,1)
+dev.off()
+
+
+
 
 pdf("figures/phenology_fig_demo.pdf",width=6.5,height=6.5)
 plot_grid(nest_histograms,nest_points,nest_circles,nest_histogram_circle)

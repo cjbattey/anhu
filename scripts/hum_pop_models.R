@@ -1,10 +1,10 @@
 #analysis of range shifts in Anna's hummingbird, ~1900-present
-library(ggplot2);library(data.table);library(plyr);library(raster);library(magrittr);
-library(viridis);library(minpack.lm);library(gridExtra);library(scales);library(cowplot);
-library(propagate);library(foreach);library(doMC);library(stringr);library(ggforce);library(RColorBrewer)
+library(ggplot2);library(data.table);library(plyr);library(raster);
+library(magrittr);library(viridis);library(minpack.lm);library(gridExtra);
+library(scales);library(cowplot);library(propagate);library(foreach);
+library(doMC);library(stringr);library(ggforce);library(RColorBrewer)
 source("scripts/ggthemes.R")
 registerDoMC(cores=8)
-
 
 #################################### load data #####################################
 #load and format CBC data
@@ -93,8 +93,8 @@ logistic_models <- dlply(anhu,.(Name),
                            model <- try(nlsLM(formula=abundance_index~(K*N0)/((K-N0)*exp(-r*site_yr)+N0), 
                                               data=e,
                                               start=list(K=2,r=0.01,N0=.01),
-                                              lower=c(0,-1,min(anhu$abundance_index)),
-                                              upper=c(10,r=1,N0=max(anhu$abundance_index)),
+                                              #lower=c(0,-1,min(anhu$abundance_index)),
+                                              #upper=c(max(anhu$abundance_index),10,10),
                                               control=nls.control(maxiter=1000)))})
 logistic_models <- logistic_models[summary(logistic_models)[,2]=="nls"] #drop models that failed to optimize
 anhu <- subset(anhu,Name %in% names(logistic_models)) #subset original data to preserve row order for easy merging
@@ -104,8 +104,8 @@ exponential_models <- dlply(anhu,.(Name),
                               model <- try(nlsLM(formula=abundance_index~N0*exp(rate*site_yr), 
                                                  data=e,
                                                  start=list(rate=0.01,N0=.01),
-                                                 lower=c(-1,min(anhu$abundance_index)),
-                                                 upper=c(1,10),
+                                                 #lower=c(-1,min(anhu$abundance_index)),
+                                                 #upper=c(10,10),
                                                  control=nls.control(maxiter=1000)))})
 # exponential_models <- exponential_models[summary(exponential_models)[,2]=="nls"] #drop models that failed to optimize
 # anhu <- subset(anhu,Name %in% names(exponential_models)) #subset original data to preserve row order for easy merging
@@ -113,12 +113,20 @@ exponential_models <- dlply(anhu,.(Name),
 
 linear_models <- dlply(anhu,.(Name),
                        function(e) {
-                         model <- try(nlsLM(formula=abundance_index~rate*site_yr+N0, 
+                         model <- try(nlsLM(formula=abundance_index~rate*site_yr+N0,
                                             data=e,
                                             start=list(rate=0.01,N0=0.01),
-                                            lower=c(-1,min(anhu$abundance_index)),
-                                            upper=c(1,10),
+                                            #lower=c(-2,min(anhu$abundance_index)),
+                                            #upper=c(10,10),
                                             control=nls.control(maxiter=1000)))})
+# linear_models <- dlply(anhu,.(Name),
+#                        function(e) {
+#                          model <- try(nlsLM(formula=abundance_index~N0,
+#                                             data=e,
+#                                             start=list(N0=0.3),
+#                                             lower=c(min(anhu$abundance_index)),
+#                                             upper=c(10),
+#                                             control=nls.control(maxiter=1000)))})
 
 #get confidence intervals for all models (takes ~2 minutes on 8 cores)
 registerDoMC(cores=8)
@@ -132,6 +140,8 @@ nlsCIlog <- function(i,nboot=100){
     m <- try(nlsLM(formula=abundance_index~(K*N0)/((K-N0)*exp(-r*site_yr)+N0), 
                    data=boot,
                    start=list(K=2,r=0.01,N0=.01),
+                   #lower=c(0,-1,min(anhu$abundance_index)),
+                   #upper=c(max(anhu$abundance_index),10,10),
                    control=nls.control(maxiter=1000)))
     if(class(m)=="nls"){
       bootset[,i] <- predict(m,dat)
@@ -152,6 +162,8 @@ nlsCIexp <- function(i,nboot=100){
     m <- try(nlsLM(formula=abundance_index~N0*exp(rate*site_yr), 
                    data=boot,
                    start=list(rate=0.01,N0=.01),
+                   #lower=c(-1,min(anhu$abundance_index)),
+                   #upper=c(10,10),
                    control=nls.control(maxiter=1000)))
     if(class(m)=="nls"){
       bootset[,i] <- predict(m,dat)
@@ -159,7 +171,6 @@ nlsCIexp <- function(i,nboot=100){
   }
   low <- apply(bootset,1,function(e) quantile(e,0.025,na.rm=T))
   high <- apply(bootset,1,function(e) quantile(e,0.975,na.rm=T))
-  print("done!")
   return(data.frame(exp_model=pred,exp_CI_low=low,exp_CI_high=high))
 }
 nlsCIlin <- function(i,nboot=100){
@@ -169,9 +180,17 @@ nlsCIlin <- function(i,nboot=100){
   bootset <- data.frame(matrix(nrow=nrow(dat),ncol=nboot))
   for(i in 1:nboot){
     boot <- dat[sample(1:nrow(dat),nrow(dat),replace = T),] 
-    m <- try(nlsLM(formula=abundance_index~rate*site_yr+N0, 
+    # m <- try(nlsLM(formula=abundance_index~N0,
+    #                data=boot,
+    #                start=list(N0=0.01),
+    #                lower=c(min(anhu$abundance_index)),
+    #                upper=c(10),
+    #                control=nls.control(maxiter=1000)))
+    m <- try(nlsLM(formula=abundance_index~rate*site_yr+N0,
                    data=boot,
                    start=list(rate=0.01,N0=0.01),
+                   #lower=c(-2,min(anhu$abundance_index)),
+                   #upper=c(10,10),
                    control=nls.control(maxiter=1000)))
     if(class(m)=="nls"){
       bootset[,i] <- predict(m,dat)
@@ -179,7 +198,6 @@ nlsCIlin <- function(i,nboot=100){
   }
   low <- apply(bootset,1,function(e) quantile(e,0.025,na.rm=T))
   high <- apply(bootset,1,function(e) quantile(e,0.975,na.rm=T))
-  print("done!")
   return(data.frame(lin_model=pred,lin_CI_low=low,lin_CI_high=high))
 }
 log_pred <- foreach(i=1:length(logistic_models),.combine="rbind") %dopar% nlsCIlog(i)
@@ -190,20 +208,24 @@ lin_pred <- foreach(i=1:length(logistic_models),.combine="rbind") %dopar% nlsCIl
 anhu <- cbind(anhu,lin_pred)
 
 #select the best model for each circle with AIC
-best_models <- c()
-delta_aic <- c()
+best_models <- data.frame(matrix(ncol=3));delta_aic <- c()
+aic_logistic <- c();aic_exponential <- c();aic_linear <- c()
 Names <- c()
 for(i in 1:length(linear_models)){
   aic <- AIC(logistic_models[[i]],
              exponential_models[[i]],
              linear_models[[i]])
+  aic_logistic[i] <- aic$AIC[1]
+  aic_exponential[i] <- aic$AIC[2]
+  aic_linear[i] <- aic$AIC[3]
   aic$model <- c("Logistic","Exponential","Linear")
   aic <- arrange(aic,AIC)
   delta_aic[i] <- aic$AIC[2]-aic$AIC[1]
-  best_models[i] <- aic$model[1]
+  best_models[i,] <- aic$model
   Names[i] <- names(linear_models)[i]
 }
-best_models <- data.frame(Name=Names,best_model=best_models,delta_aic=delta_aic)
+best_models <- data.frame(Name=Names,best_model=best_models,delta_aic=delta_aic,
+                          aic_log=aic_logistic,aic_exp=aic_exponential,aic_lin=aic_linear)
 anhu <- merge(anhu,best_models,by="Name")
 
 model_coeffs <- data.frame(Name=names(exponential_models),
@@ -221,8 +243,12 @@ anhu <- merge(anhu,model_coeffs,by="Name")
 #are nw growth rates related to the date of colonization?
 nw <- subset(anhu,abundance_index>0 & !is.na(abundance_index))
 nw <- ddply(anhu,.(Name),summarize,first_report=min(year),rate=exp_growth_rate[1])
-lm(rate~first_report,nw) %>% summary() #nope!
-ggplot(data=nw,aes(x=first_report,y=rate))+geom_point()+geom_smooth(method="lm")
+lm(rate~first_report,nw) %>% summary()
+ggplot(data=nw,aes(x=first_report,y=rate))+
+  theme(axis.text=element_text(size=8),
+        axis.title = element_text(size=8))+
+  geom_point(shape=1)+
+  geom_smooth(method="lm",col="black",lwd=0.75)
 
 #are nw rates higher than native rates? 
 nw <- subset(anhu,state %in% c("OR","WA","BC"))
@@ -237,13 +263,15 @@ sw$range <- "SW"
 nwc <- rbind(nw,ca,sw)
 wilcox.test(sw$rate,ca$rate,conf.int=T) #nope for the SW
 wilcox.test(nw$rate,ca$rate,conf.int=T) #yep for the PNW
+
 pdf("figures/growth_rate_boxplots.pdf",width=3.5,height=3,useDingbats = F)
 p <- ggplot(data=nwc,aes(x=range,y=rate))+
   ylab("Population Growth Rate")+theme(text=element_text(size=10),axis.text = element_text(size=10))+
   geom_sina(shape=21,stroke=0.5,col="grey")+geom_boxplot(notch=T,fill=NA,outlier.colour = NA)
 print(p)
 dev.off()
-#add zero-report years
+
+#add zero-report years 
 anhu <- join(anhu,eff,type="full",by=c("Name","year","Count_yr"))
 
 
