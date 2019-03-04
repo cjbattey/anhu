@@ -111,14 +111,23 @@ exponential_models <- dlply(anhu,.(Name),
 # anhu <- subset(anhu,Name %in% names(exponential_models)) #subset original data to preserve row order for easy merging
 # logistic_models <- logistic_models[names(logistic_models) %in% names(exponential_models)] #in case some models also fail exponential fits
 
+# linear_models <- dlply(anhu,.(Name),
+#                        function(e) {
+#                          model <- try(nlsLM(formula=abundance_index~rate*site_yr+N0,
+#                                             data=e,
+#                                             start=list(rate=0.01,N0=0.01),
+#                                             #lower=c(-2,min(anhu$abundance_index)),
+#                                             #upper=c(10,10),
+#                                             control=nls.control(maxiter=1000)))})
 linear_models <- dlply(anhu,.(Name),
                        function(e) {
-                         model <- try(nlsLM(formula=abundance_index~rate*site_yr+N0,
+                         model <- try(nlsLM(formula=abundance_index~N0,
                                             data=e,
-                                            start=list(rate=0.01,N0=0.01),
+                                            start=list(N0=0.01),
                                             #lower=c(-2,min(anhu$abundance_index)),
                                             #upper=c(10,10),
                                             control=nls.control(maxiter=1000)))})
+
 # linear_models <- dlply(anhu,.(Name),
 #                        function(e) {
 #                          model <- try(nlsLM(formula=abundance_index~N0,
@@ -180,18 +189,18 @@ nlsCIlin <- function(i,nboot=100){
   bootset <- data.frame(matrix(nrow=nrow(dat),ncol=nboot))
   for(i in 1:nboot){
     boot <- dat[sample(1:nrow(dat),nrow(dat),replace = T),] 
-    # m <- try(nlsLM(formula=abundance_index~N0,
-    #                data=boot,
-    #                start=list(N0=0.01),
-    #                lower=c(min(anhu$abundance_index)),
-    #                upper=c(10),
-    #                control=nls.control(maxiter=1000)))
-    m <- try(nlsLM(formula=abundance_index~rate*site_yr+N0,
+    m <- try(nlsLM(formula=abundance_index~N0,
                    data=boot,
-                   start=list(rate=0.01,N0=0.01),
-                   #lower=c(-2,min(anhu$abundance_index)),
-                   #upper=c(10,10),
+                   start=list(N0=0.01),
+                   lower=c(min(anhu$abundance_index)),
+                   upper=c(10),
                    control=nls.control(maxiter=1000)))
+    # m <- try(nlsLM(formula=abundance_index~rate*site_yr+N0,
+    #                data=boot,
+    #                start=list(rate=0.01,N0=0.01),
+    #                #lower=c(-2,min(anhu$abundance_index)),
+    #                #upper=c(10,10),
+    #                control=nls.control(maxiter=1000)))
     if(class(m)=="nls"){
       bootset[,i] <- predict(m,dat)
     }
@@ -206,6 +215,17 @@ exp_pred <- foreach(i=1:length(logistic_models),.combine="rbind") %dopar% nlsCIe
 anhu <- cbind(anhu,exp_pred)
 lin_pred <- foreach(i=1:length(logistic_models),.combine="rbind") %dopar% nlsCIlin(i)
 anhu <- cbind(anhu,lin_pred)
+
+#get mean squared error for exponential models
+msedf <- data.frame(mse=0,Name="",mae=0,stringsAsFactors = F)[-1,]
+for(i in 1:length(exponential_models)){
+  msedf[i,1] <- exponential_models[[i]] %>% residuals() %>% .^2 %>% mean()
+  msedf[i,2] <- names(exponential_models)[i]
+  msedf[i,3] <- exponential_models[[i]] %>% residuals() %>%  abs() %>% mean()
+}
+anhu <- merge(anhu,msedf,by="Name")
+
+
 
 #select the best model for each circle with AIC
 best_models <- data.frame(matrix(ncol=3));delta_aic <- c()

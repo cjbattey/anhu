@@ -2,6 +2,8 @@
 #Figure 2 - population growth
 tmp <- subset(anhu,!is.na(anhu$best_model.X1))
 map <- map_data("world");state <- map_data("state")
+pal <- grDevices::colorRampPalette(color=c("steelblue4","skyblue","lightgoldenrod1","orangered","red4"),
+                                   bias=1,space="rgb",interpolate="linear")
 plotdata <- ddply(tmp,.(Name),summarize,
                   min_year=min(Count_yr),
                   exp_rate_p=exp_rate_p[1],
@@ -17,13 +19,18 @@ plotdata <- ddply(tmp,.(Name),summarize,
                   delta_aic=delta_aic[1],
                   aic_lin=aic_lin[1],
                   aic_exp=aic_exp[1],
-                  aic_log=aic_log[1])
-#plotdata$R2_exp_model <- 
-plotdata$best_model <- factor(plotdata$best_model,levels=c("Linear","Logistic","Exponential"))
-plotdata$second_model <- factor(plotdata$second_model,levels=c("Linear","Logistic","Exponential"))
+                  aic_log=aic_log[1],
+                  mse=mse[1],
+                  mae=mae[1],
+                  meanabund=mean(abundance_index,na.rm=T))
+plotdata$best_model[plotdata$best_model=="Linear"] <- "Constant"
+plotdata$second_model[plotdata$second_model=="Linear"] <- "Constant"
+plotdata$best_model <- factor(plotdata$best_model,levels=c("Constant","Logistic","Exponential"))
+plotdata$second_model <- factor(plotdata$second_model,levels=c("Constant","Logistic","Exponential"))
 #set column to scale alpha if delta_aic is < 2
 plotdata$aic_alpha_scale <- plotdata$delta_aic
 plotdata$aic_alpha_scale[plotdata$aic_alpha_scale>2] <- 2
+#plotdata <- arrange(plotdata,best_model)
 
 plot1 <- ggplot()+theme_bw()+theme(panel.grid=element_blank())+coord_map()+
   #xlim(min(plotdata$long)-1,max(plotdata$long)+1)+ylim(min(plotdata$lat)-1,max(plotdata$lat)+1)+
@@ -38,14 +45,36 @@ plot1 <- ggplot()+theme_bw()+theme(panel.grid=element_blank())+coord_map()+
         panel.background = element_blank(),
         plot.background = element_blank())+
   xlab("")+ylab("")+
-  scale_color_viridis(name="Population\nGrowth\nRate",direction = -1,option = "inferno")+
-  #scale_color_distiller(name="Population\nGrowth\nRate",direction = -1,palette="RdYlBu")+
+  #scale_fill_gradientn(colors=pal(nrow(plotdata)))+
+  #scale_fill_distiller(palette = "YlGnBu")+
+  scale_fill_viridis(name="Population\nGrowth\nRate",direction = -1,option = "inferno")+
   geom_path(data=state,aes(x=long,y=lat,group=group),lwd=0.2,col="grey")+
   geom_path(data=map,aes(x=long,y=lat,group=group),lwd=0.2)+
-  geom_point(data=plotdata,aes(x=long,y=lat,col=exp_growth_rate),size=1)
-#stat_summary_2d(data=plotdata,aes(x=long,y=lat,z=exp_growth_rate),fun="mean",bins=60)
+  stat_summary_2d(data=plotdata,aes(x=long,y=lat,z=exp_growth_rate),bins=60)
+  #geom_point(data=plotdata,aes(x=long,y=lat,col=exp_growth_rate),size=0.6)
 plot1 <- plot1+guides(fill=guide_colourbar(barwidth = unit(4,"mm"),barheight = unit(20,"mm")))
 
+# plot2 <- ggplot()+theme_bw()+theme(panel.grid=element_blank())+coord_map()+
+#   #xlim(min(plotdata$long)-1,max(plotdata$long)+1)+ylim(min(plotdata$lat)-1,max(plotdata$lat)+1)+
+#   xlim(-130,-94)+ylim(27,52)+
+#   theme(legend.position = c(.025,.43),
+#         legend.background = element_blank(),
+#         legend.title = element_text(size=8),
+#         axis.ticks = element_blank(),
+#         axis.text=element_blank(),
+#         text=element_text(size=8),
+#         panel.border = element_blank(),
+#         panel.background = element_blank(),
+#         plot.background = element_blank())+
+#   xlab("")+ylab("")+
+#   #scale_fill_viridis(name="AIC(Exponential\nGrowth Model)",direction = 1,option = "viridis")+
+#   #scale_color_distiller(name="AIC(Exponential\nGrowth Model)",direction = -1,palette="RdYlBu")+
+#   scale_fill_gradientn(colors=rev(pal(nrow(plotdata))),name="AIC(Exponential\nGrowth Model)")+
+#   geom_path(data=state,aes(x=long,y=lat,group=group),lwd=0.2,col="grey")+
+#   geom_path(data=map,aes(x=long,y=lat,group=group),lwd=0.2)+
+#   stat_summary_2d(data=plotdata,aes(x=long,y=lat,z=mae),bins=60)
+#   #geom_point(data=plotdata,aes(x=long,y=lat,col=aic_exp),size=0.6)
+# plot2 <- plot2+guides(fill=guide_colourbar(barwidth = unit(4,"mm"),barheight = unit(20,"mm")))
 plot2 <- ggplot()+theme_bw()+theme(panel.grid=element_blank())+coord_map()+
   xlim(-130,-94)+ylim(27,52)+
   theme(legend.position = c(.04,.3),
@@ -58,15 +87,12 @@ plot2 <- ggplot()+theme_bw()+theme(panel.grid=element_blank())+coord_map()+
         panel.background = element_blank(),
         plot.background = element_blank())+
   xlab("")+ylab("")+
-  scale_color_manual(name="Model",values=c(brewer.pal(3,"Dark2")[3],brewer.pal(3,"Dark2")[1],brewer.pal(3,"Dark2")[2]))+
-  #scale_color_brewer(name="Best Model",palette="Dark2")+
-  scale_alpha(guide=F)+
+  scale_color_manual(name="Model",values=c(brewer.pal(3,"Dark2")[3],brewer.pal(3,"Dark2")[2],brewer.pal(3,"Dark2")[1]))+
   geom_path(data=state,aes(x=long,y=lat,group=group),lwd=0.2,col="grey")+
   geom_path(data=map,aes(x=long,y=lat,group=group),lwd=0.2)+
-  geom_point(data=plotdata[plotdata$delta_aic<2,],aes(x=long,y=lat,col=best_model),size=0.8,alpha=0.7,shape=16)+
-  geom_point(data=plotdata[plotdata$delta_aic<2,],aes(x=long,y=lat,col=second_model),shape=21,size=0.8,stroke=0.4)+
-  geom_point(data=plotdata[plotdata$delta_aic>=2,],aes(x=long,y=lat,col=best_model),size=.6)
-  #geom_point(data=plotdata,aes(x=long,y=lat,col=best_model,alpha=aic_alpha_scale),size=.7)
+  geom_point(data=plotdata[plotdata$delta_aic>=2,],aes(x=long,y=lat,col=best_model),size=.7)+
+  geom_point(data=plotdata[plotdata$delta_aic<2,],aes(x=long,y=lat,col=best_model),size=0.8,shape=1)
+  #geom_point(data=plotdata[plotdata$delta_aic<2,],aes(x=long,y=lat,col=second_model),shape=21,size=0.8,stroke=0.4)
 
 plot2 <- plot2+guides(color=guide_legend(override.aes=list(size=4)))
 
@@ -91,7 +117,7 @@ model_bar_plot <- ggplot(data=best_model_summary,aes(x=state,y=value,fill=variab
 mean(subset(best_model_summary,state %in% c("CA") & variable=="Exponential")$value)
 mean(subset(best_model_summary,state %in% c("CA") & variable=="Linear")$value)
 mean(subset(best_model_summary,state %in% c("OR","WA","BC") & variable=="Exponential")$value)
-mean(subset(best_model_summary,state %in% c("TX","AZ") & variable=="Exponential")$value)
+mean(subset(best_model_summary,state %in% c("TX","AZ","NM") & variable=="Exponential")$value)
 
 dat <- subset(anhu,Name %in% c("El Paso","Santa Catalina Mountains","Tucson Valley",
                                "Santa Barbara","Santa Cruz County","Oakland","Redding",
@@ -126,7 +152,7 @@ time_plots <- ggplot()+
   geom_line(data=dat[dat$best_model.X1=="Linear",],aes(x=year,y=lin_CI_high),col="#7570B3",linetype=2,lwd=0.35)
 
 #png("figures/Figure_2.png",width=6,height=6,units="in",res=600)
-pdf("figures/Figure_2_no_limits.pdf",width=6,height=6,useDingbats = F)
+pdf("figures/Figure_2_no_limits_constantlinmodel.pdf",width=6,height=6,useDingbats = F)
 ggdraw()+
   draw_plot(plot1,0,.55,.5,.45)+
   draw_plot(plot2,.5,.55,.5,.45)+
@@ -135,6 +161,8 @@ ggdraw()+
   draw_plot_label(c("A","B","C"),x=c(0,.5,0),y=c(.98,.98,.6))
 dev.off()
 
+
+########################################## Supplementary Figures #################################
 
 #Supplementary Figure 1 - expanded first report map
 map <- map_data("world");state <- map_data("state")

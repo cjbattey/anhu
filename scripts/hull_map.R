@@ -11,7 +11,7 @@ for(i in year_breaks){
            SpatialPoints(proj4string = crs("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs ")) %>% 
             crop(extent(-155,-85,22,61.5))
   
-  #cluster points at ~500km distance and drop clusters with < 5 individual reports (typically 5 years of CBC records)
+  #cluster points at ~500km distance and drop clusters with <= 10 individual reports (typically 5 years of CBC records)
   dists <- as.dist(spDists(pts1,longlat = T))
   clust <- hclust(dists)
   clust <- cutree(clust,h=200)
@@ -24,7 +24,7 @@ for(i in year_breaks){
   #cluster remaining points with 1000km distance and estimate concave hulls
   pts$clust2 <- pts[,-3] %>% as.matrix() %>% spDists(longlat=T) %>% as.dist() %>% hclust() %>% cutree(h=500)
   
-  #estimate concave hull polygons for each cluster, buffer by 100km, clip to coastlines, format as df for ggplot, add to the ranges df
+  #estimate concave hull polygons for each cluster, buffer by 50km, clip to coastlines, format as df for ggplot, add to the ranges df
   for(j in unique(pts$clust2)){
     area1 <- unique(pts[pts$clust2==j,c(1,2)]) %>% as.matrix() %>% 
               concaveman(concavity=1.75) %>% 
@@ -47,7 +47,7 @@ ranges$maxyear <- factor(ranges$maxyear,levels=year_breaks)
 ranges$group <- factor(ranges$group,levels=rev(levels(factor(ranges$group))))
 
 #print pdf map
-pdf("figures/fig1.pdf",width=3.5,height=3.25)
+pdf("figures/Figure_1.pdf",width=3.5,height=3.25)
 m <- ggplot()+coord_map()+theme_minimal()+
   xlab("")+ylab("")+
   theme(legend.position=c(0.16,0.45),
